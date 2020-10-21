@@ -1,6 +1,6 @@
 {
 	"name": "node-percipio-learneractivityreport",
-	"version": "0.0.0",
+	"version": "1.0.0",
 	"description": "Retrieve a Learner Activity Report from Percipio in JSON format and save locally",
 	"main": "app.js",
 	"scripts": {
