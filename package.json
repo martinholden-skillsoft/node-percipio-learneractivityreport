@@ -1,0 +1,51 @@
+{
+	"name": "node-percipio-learneractivityreport",
+	"version": "0.0.0",
+	"description": "Retrieve a Learner Activity Report from Percipio in JSON format and save locally",
+	"main": "app.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"start": "node ./app.js",
+		"lint": "eslint **/*.js",
+		"preversion": "npm run lint",
+		"postversion": "git push && git push --tags && npm run changelog && git push ",
+		"postinstall": "",
+		"changelog": "rimraf CHANGELOG.md && auto-changelog --template keepachangelog && git add . && git commit . -m changelog && git push",
+		"changelog2": "rimraf CHANGELOG.md && auto-changelog --template keepachangelog"
+	},
+	"keywords": [
+		"skillsoft",
+		"percipio",
+		"jsonata",
+		"streams"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/martinholden-skillsoft/node-percipio-learneractivityreport.git"
+	},
+	"author": {
+		"name": "Martin Holden",
+		"email": "12408585+martinholden-skillsoft@users.noreply.github.com"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"axios": "^0.20.0",
+		"json-stringify-safe": "^5.0.1",
+		"lodash": "^4.17.19",
+		"mkdirp": "^1.0.4",
+		"moment": "^2.29.1",
+		"promise-retry": "^2.0.1",
+		"winston": "^3.2.1"
+	},
+	"devDependencies": {
+		"auto-changelog": "^2.2.1",
+		"babel-eslint": "^10.1.0",
+		"eslint": "^7.10.0",
+		"eslint-config-airbnb-base": "^14.1.0",
+		"eslint-config-prettier": "^6.12.0",
+		"eslint-plugin-import": "^2.22.1",
+		"eslint-plugin-prettier": "^3.1.2",
+		"prettier": "^2.1.2",
+		"rimraf": "^3.0.2"
+	}
+}
