@@ -100,7 +100,7 @@ randomize: Randomizes the timeouts by multiplying with a factor between 1 to 2. 
 config.polling_options = {};
 config.polling_options.retries = 20;
 config.polling_options.minTimeout = 60 * 1000;
-config.polling_options.maxTimeout = 120 * 1000;
+config.polling_options.maxTimeout = Infinity;
 // Using Factor=1 means polling at fixed interval of minTimeout
 config.polling_options.factor = 1;
 
