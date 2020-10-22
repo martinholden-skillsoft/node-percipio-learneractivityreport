@@ -187,7 +187,7 @@ const getAllReportDataAndSave = async (options) => {
                   resolve(outputFile);
                 });
 
-                outputStream.write(stringifySafe(reportResponse.data));
+                outputStream.write(stringifySafe(reportResponse.data, null, 2));
                 outputStream.end();
               } else {
                 logger.info('No results file created', loggingOptions);
