@@ -196,11 +196,12 @@ const getAllReportDataAndSave = async (options) => {
           options.logger.info(`Report Id: ${submitResponse.data.id}`, loggingOptions);
           pollForReport(options, submitResponse.data.id)
             .then((reportResponse) => {
-              options.logger.info(
-                `Records Downloaded ${reportResponse.data.length.toLocaleString()}`,
-                loggingOptions
-              );
-              if (reportResponse.data.length > 0) {
+              // Handle a JSON response
+              if (_.isObject(reportResponse.data) && !_.isString(reportResponse.data)) {
+                options.logger.info(
+                  `Records Downloaded ${reportResponse.data.length.toLocaleString()}`,
+                  loggingOptions
+                );
                 const outputStream = fs.createWriteStream(outputFile);
 
                 outputStream.on('finish', () => {
@@ -210,8 +211,26 @@ const getAllReportDataAndSave = async (options) => {
 
                 outputStream.write(stringifySafe(reportResponse.data, null, 2));
                 outputStream.end();
+              } else if (!_.isObject(reportResponse.data) && _.isString(reportResponse.data)) {
+                // Handle a CSV response
+                options.logger.info(
+                  `Records Downloaded. Download Size: ${reportResponse.data.length.toLocaleString()} bytes`,
+                  loggingOptions
+                );
+                const outputStream = fs.createWriteStream(outputFile);
+
+                outputStream.on('finish', () => {
+                  options.logger.info(`Records Saved. Path: ${outputFile}`, loggingOptions);
+                  resolve(outputFile);
+                });
+
+                outputStream.write(reportResponse.data);
+                outputStream.end();
               } else {
-                options.logger.info('No results file created', loggingOptions);
+                options.logger.warn(
+                  'Response is not valid JSON or CSV. No results file created.',
+                  loggingOptions
+                );
                 resolve(null);
               }
             })
