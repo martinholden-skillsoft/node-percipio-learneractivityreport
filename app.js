@@ -1,3 +1,5 @@
+const dotenvsafe = require('dotenv-safe');
+const config = require('config');
 const axios = require('axios');
 const fs = require('fs');
 const Path = require('path');
@@ -8,11 +10,22 @@ const stringifySafe = require('json-stringify-safe');
 
 const { transports } = require('winston');
 const logger = require('./lib/logger');
-const configuration = require('./config');
 
 const pjson = require('./package.json');
 
 const NODE_ENV = process.env.NODE_ENV || 'production';
+
+/**
+ * Process the template string and replace the path values
+ *
+ * @param {string} templateString
+ * @param {*} templateVars
+ * @return {string}
+ */
+const processTemplate = (templateString, templateVars) => {
+  const compiled = _.template(templateString.replace(/{/g, '${'));
+  return compiled(templateVars);
+};
 
 /**
  * Call Percipio API
@@ -26,18 +39,22 @@ const callPercipio = async (options) => {
       label: 'callPercipio',
     };
 
-    const requestUri = options.request.uri;
-    logger.debug(`Request URI: ${requestUri}`, loggingOptions);
+    const requestUri = processTemplate(options.request.uritemplate, options.request.path);
+    options.logger.debug(`Request URI: ${requestUri}`, loggingOptions);
 
     let requestParams = options.request.query || {};
     requestParams = _.omitBy(requestParams, _.isNil);
-    logger.debug(`Request Querystring Parameters: ${stringifySafe(requestParams)}`, loggingOptions);
+    options.logger.debug(
+      `Request Querystring Parameters: ${stringifySafe(requestParams)}`,
+      loggingOptions
+    );
 
     let requestBody = options.request.body || {};
     requestBody = _.omitBy(requestBody, _.isNil);
-    logger.debug(`Request Body: ${stringifySafe(requestBody)}`, loggingOptions);
+    options.logger.debug(`Request Body: ${stringifySafe(requestBody)}`, loggingOptions);
 
     const axiosConfig = {
+      baseURL: options.request.baseURL,
       url: requestUri,
       headers: {
         Authorization: `Bearer ${options.request.bearer}`,
@@ -54,29 +71,30 @@ const callPercipio = async (options) => {
       axiosConfig.params = requestParams;
     }
 
-    logger.debug(`Axios Config: ${stringifySafe(axiosConfig)}`, loggingOptions);
+    options.logger.debug(`Axios Config: ${stringifySafe(axiosConfig)}`, loggingOptions);
 
     try {
       const response = await axios.request(axiosConfig);
-      logger.debug(`Response Headers: ${stringifySafe(response.headers)}`, loggingOptions);
-      // logger.debug(`Response Body: ${stringifySafe(response.data)}`, loggingOptions);
-
+      options.logger.debug(`Response Headers: ${stringifySafe(response.headers)}`, loggingOptions);
       return response;
     } catch (err) {
-      logger.warn(
+      options.logger.warn(
         `Trying to get report. Got Error after Attempt# ${numberOfRetries} : ${err}`,
         loggingOptions
       );
       if (err.response) {
-        logger.debug(`Response Headers: ${stringifySafe(err.response.headers)}`, loggingOptions);
-        logger.debug(`Response Body: ${stringifySafe(err.response.data)}`, loggingOptions);
+        options.logger.debug(
+          `Response Headers: ${stringifySafe(err.response.headers)}`,
+          loggingOptions
+        );
+        options.logger.debug(`Response Body: ${stringifySafe(err.response.data)}`, loggingOptions);
       } else {
-        logger.debug('No Response Object available', loggingOptions);
+        options.logger.debug('No Response Object available', loggingOptions);
       }
       if (numberOfRetries < options.retry_options.retries + 1) {
         retry(err);
       } else {
-        logger.error('Failed to call Percipio', loggingOptions);
+        options.logger.error('Failed to call Percipio', loggingOptions);
       }
       throw err;
     }
@@ -95,7 +113,7 @@ const submitReport = async (options) => {
   };
   const opts = options;
   opts.request = opts.reportrequest;
-  logger.info('Submitting Report Request', loggingOptions);
+  options.logger.info('Submitting Report Request', loggingOptions);
   return callPercipio(opts);
 };
 
@@ -119,7 +137,7 @@ const pollForReport = async (options, reportRequestId) => {
     opts.request.path.reportRequestId = reportRequestId;
     opts.request.uri = `${opts.request.baseuri}/reporting/v1/organizations/${opts.request.path.orgId}/report-requests/${opts.request.path.reportRequestId}`;
 
-    logger.info('Submitting Report Poll Requests', loggingOptions);
+    options.logger.info('Submitting Report Poll Requests', loggingOptions);
     try {
       const response = await callPercipio(opts);
       if (_.isUndefined(response.data.status)) {
@@ -129,20 +147,23 @@ const pollForReport = async (options, reportRequestId) => {
       error.response = response;
       throw error;
     } catch (err) {
-      logger.warn(
+      options.logger.warn(
         `Trying to get report. Got Error after Attempt# ${numberOfRetries} of ${options.polling_options.retries} : ${err}`,
         loggingOptions
       );
       if (err.response) {
-        logger.debug(`Response Headers: ${stringifySafe(err.response.headers)}`, loggingOptions);
-        logger.debug(`Response Body: ${stringifySafe(err.response.data)}`, loggingOptions);
+        options.logger.debug(
+          `Response Headers: ${stringifySafe(err.response.headers)}`,
+          loggingOptions
+        );
+        options.logger.debug(`Response Body: ${stringifySafe(err.response.data)}`, loggingOptions);
       } else {
-        logger.debug('No Response Object available', loggingOptions);
+        options.logger.debug('No Response Object available', loggingOptions);
       }
       if (numberOfRetries < options.polling_options.retries + 1) {
         retry(err);
       } else {
-        logger.error('Failed to retrieve report', loggingOptions);
+        options.logger.error('Failed to retrieve report', loggingOptions);
       }
       throw err;
     }
@@ -172,10 +193,10 @@ const getAllReportDataAndSave = async (options) => {
     try {
       submitReport(options)
         .then((submitResponse) => {
-          logger.info(`Report Id: ${submitResponse.data.id}`, loggingOptions);
+          options.logger.info(`Report Id: ${submitResponse.data.id}`, loggingOptions);
           pollForReport(options, submitResponse.data.id)
             .then((reportResponse) => {
-              logger.info(
+              options.logger.info(
                 `Records Downloaded ${reportResponse.data.length.toLocaleString()}`,
                 loggingOptions
               );
@@ -183,26 +204,26 @@ const getAllReportDataAndSave = async (options) => {
                 const outputStream = fs.createWriteStream(outputFile);
 
                 outputStream.on('finish', () => {
-                  logger.info(`Records Saved. Path: ${outputFile}`, loggingOptions);
+                  options.logger.info(`Records Saved. Path: ${outputFile}`, loggingOptions);
                   resolve(outputFile);
                 });
 
                 outputStream.write(stringifySafe(reportResponse.data, null, 2));
                 outputStream.end();
               } else {
-                logger.info('No results file created', loggingOptions);
+                options.logger.info('No results file created', loggingOptions);
                 resolve(null);
               }
             })
             .catch((err) => {
-              logger.error(`Error:  ${err}`, loggingOptions);
+              options.logger.error(`Error:  ${err}`, loggingOptions);
             });
         })
         .catch((err) => {
-          logger.error(`Error:  ${err}`, loggingOptions);
+          options.logger.error(`Error:  ${err}`, loggingOptions);
         });
     } catch (err) {
-      logger.error('ERROR: trying to generate report results', loggingOptions);
+      options.logger.error('ERROR: trying to generate report results', loggingOptions);
       reject(err);
     }
   });
@@ -221,16 +242,18 @@ const main = async (configOptions) => {
 
   const options = configOptions || null;
 
+  options.logger = logger;
+
   if (_.isNull(options)) {
-    logger.error('Invalid configuration', loggingOptions);
+    options.logger.error('Invalid configuration', loggingOptions);
     return false;
   }
 
   // Set logging to silly level for dev
   if (NODE_ENV.toUpperCase() === 'DEVELOPMENT') {
-    logger.level = 'debug';
+    options.logger.level = 'debug';
   } else {
-    logger.level = options.debug.loggingLevel;
+    options.logger.level = options.debug.loggingLevel;
   }
 
   // Create logging folder if one does not exist
@@ -248,7 +271,7 @@ const main = async (configOptions) => {
   }
 
   // Add logging to a file
-  logger.add(
+  options.logger.add(
     new transports.File({
       filename: Path.join(options.debug.path, options.debug.filename),
       options: {
@@ -257,31 +280,21 @@ const main = async (configOptions) => {
     })
   );
 
-  options.logger = logger;
+  options.logger.info(`Start ${pjson.name} - v${pjson.version}`, loggingOptions);
 
-  logger.info(`Start ${pjson.name} - v${pjson.version}`, loggingOptions);
+  options.logger.debug(`Options: ${stringifySafe(options)}`, loggingOptions);
 
-  logger.debug(`Options: ${stringifySafe(options)}`, loggingOptions);
-
-  if (_.isNull(options.reportrequest.path.orgId) || _.isNull(options.pollrequest.path.orgId)) {
-    logger.error(
-      'Invalid configuration - no orgid in config file or set env ORGID',
-      loggingOptions
-    );
-    return false;
-  }
-
-  if (_.isNull(options.reportrequest.bearer) || _.isNull(options.pollrequest.bearer)) {
-    logger.error('Invalid configuration - no bearer or set env BEARER', loggingOptions);
-    return false;
-  }
-
-  logger.info('Calling Percipio', loggingOptions);
+  options.logger.info('Calling Percipio', loggingOptions);
   await getAllReportDataAndSave(options).catch((err) => {
-    logger.error(`Error:  ${err}`, loggingOptions);
+    options.logger.error(`Error:  ${err}`, loggingOptions);
   });
-  logger.info(`End ${pjson.name} - v${pjson.version}`, loggingOptions);
+  options.logger.info(`End ${pjson.name} - v${pjson.version}`, loggingOptions);
   return true;
 };
 
-main(configuration);
+try {
+  dotenvsafe.config();
+  main(config);
+} catch (error) {
+  throw new Error(`An error occured during configuration. ${error.message}`);
+}
