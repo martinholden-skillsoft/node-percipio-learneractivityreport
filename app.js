@@ -1,4 +1,5 @@
-const dotenvsafe = require('dotenv-safe');
+require('dotenv-safe').config();
+
 const config = require('config');
 const axios = require('axios');
 const fs = require('fs');
@@ -312,7 +313,6 @@ const main = async (configOptions) => {
 };
 
 try {
-  dotenvsafe.config();
   main(config);
 } catch (error) {
   throw new Error(`An error occured during configuration. ${error.message}`);
