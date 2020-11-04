@@ -1,6 +1,6 @@
 # node-percipio-learneractivityreport
 
-Retrieve [Learner Activity Report](https://documentation.skillsoft.com/en_us/percipio/Content/A_Administrator/admn_rpt_learner_activity.htm) data from Percipio, in JSON format and save locally.
+Retrieve [Learner Activity Report](https://documentation.skillsoft.com/en_us/percipio/Content/A_Administrator/admn_rpt_learner_activity.htm) data from Percipio and save locally.
 
 ## Requirements
 
@@ -14,7 +14,7 @@ Once you have copied this repository set the following NODE ENV variables, or co
 | ENV       | Required | Description                                                                                                                                                                                                                                                                                      |
 | --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | ORGID     | Required | This is the Percipio Organiation UUID for your Percipio Site                                                                                                                                                                                                                                     |
-| BEARER    | Required | This is the Percipio Bearer token for a Service Account with permissions for CONTENT DISCOVERY services.                                                                                                                                                                                         |
+| BEARER    | Required | This is the Percipio Bearer token for a Service Account with permissions for services.                                                                                                                                                                                         |
 | BASEURL | Required | This is set to the base URL for the Percipio data center. For US hosted use: https://api.percipio.com For EU hosted use: https://dew1-api.percipio.com |
 | TIMEFRAME | Optional | This is a filter criteria that specifies the timeframe for the results.<br/><br/>The report start/end dates are calculated dynamically based on when the report is submitted date.<br/><br/>Options are: DAY, WEEK, THIRTY_DAYS, CALENDAR_MONTH<br/><br/>If left empty/null THIRTY_DAYS is used. |
 | START     | Optional | This is a filter criteria that specifies the START date for the report in ISO8601 format.<br/><br/>The END option must be specified if using this.<br/><br/>The TIMEFRAME option must be null if using this.                                                                                     |
@@ -35,10 +35,10 @@ The Percipio [https://api.percipio.com/reporting/api-docs/#/%2Fv1/requestLearnin
 
 The Percipio[https://api.percipio.com/reporting/api-docs/#/%2Fv1/getReportRequest](https://api.percipio.com/reporting/api-docs/#/%2Fv1/getReportRequest) API will then be called to download the generated data.
 
-The returned JSON will be stored in:
+The default configuration returns JSON and it will be stored in:
 
 ```
-results/YYYYMMDD_hhmmss_results.csv
+results/YYYYMMDD_hhmmss_results.json
 ```
 
 The timestamp component is based on UTC time when the script runs:
