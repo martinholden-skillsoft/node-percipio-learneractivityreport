@@ -21,7 +21,7 @@ Once you have copied this repository set the following NODE ENV variables, or co
 | END     | Optional | This is a filter criteria that specifies the END date for the report in ISO8601 format.<br/><br/>The START option must be specified if using this.<br/><br/>The TIMEFRAME option must be null if using this                                                                                       |
 
 ## Configuring the API call
-Make the config changes in [config/default.js](config/default.js) file, to specify the request criteria for the report.
+Make any additional config changes in [config/default.js](config/default.js) file, to specify the request criteria for the report other then date range.
 
 ## How to use it
 
@@ -35,13 +35,13 @@ The Percipio [https://api.percipio.com/reporting/api-docs/#/%2Fv1/requestLearnin
 
 The Percipio[https://api.percipio.com/reporting/api-docs/#/%2Fv1/getReportRequest](https://api.percipio.com/reporting/api-docs/#/%2Fv1/getReportRequest) API will then be called to download the generated data.
 
-The default configuration returns JSON and it will be stored in:
+The default configuration returns JSON and the data will be stored in:
 
 ```
 results/YYYYMMDD_hhmmss_results.json
 ```
 
-The timestamp component is based on UTC time when the script runs:
+The timestamp component is based on the UTC time when the script runs:
 
 | DATEPART | COMMENTS                            |
 | -------- | ----------------------------------- |
