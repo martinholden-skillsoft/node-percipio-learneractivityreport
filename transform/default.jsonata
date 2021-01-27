@@ -23,7 +23,7 @@ $.(
 
     $transformed_data := (
         $.{
-            'COURSEUNIQUEID': id,
+            'COURSEUNIQUEID': contentUuid,
             'USERUNIQUEID': userUuid,
             'SCORE': $exists(highScore) ? $number(highScore) : $number(-1),
             'STATUS': status
