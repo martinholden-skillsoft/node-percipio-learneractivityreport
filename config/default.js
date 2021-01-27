@@ -87,7 +87,10 @@ config.reportrequest.body.end = null;
  * Type: string
  * Enum: DAY, WEEK, THIRTY_DAYS, CALENDAR_MONTH
  */
-config.reportrequest.body.timeFrame = config.reportrequest.body.start ? null : 'THIRTY_DAYS';
+config.reportrequest.body.timeFrame = defer((cfg) => {
+  return cfg.reportrequest.body.start ? null : 'THIRTY_DAYS';
+});
+
 /**
  * Name: audience
  * Description : Audience filter, defaults to all audience
