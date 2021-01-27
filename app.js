@@ -8,11 +8,14 @@ const _ = require('lodash');
 const mkdirp = require('mkdirp');
 const promiseRetry = require('promise-retry');
 const stringifySafe = require('json-stringify-safe');
+const delve = require('dlv');
 
 const { transports } = require('winston');
 const logger = require('./lib/logger');
 
 const pjson = require('./package.json');
+
+const { jsonataTransformStream, csvTransformStream } = require('./lib/streams');
 
 const NODE_ENV = process.env.NODE_ENV || 'production';
 
@@ -161,6 +164,11 @@ const pollForReport = async (options, reportRequestId) => {
       } else {
         options.logger.debug('No Response Object available', loggingOptions);
       }
+
+      if (delve(err, 'response.data.status', '').localeCompare('FAILED') === 0) {
+        throw err;
+      }
+
       if (numberOfRetries < options.polling_options.retries + 1) {
         retry(err);
       } else {
@@ -169,6 +177,91 @@ const pollForReport = async (options, reportRequestId) => {
       throw err;
     }
   }, options.polling_options);
+};
+
+/**
+ * Loop thru the data and transform it.
+ *
+ * @param {*} options
+ * @param {*} records The array of JSON records
+ * @returns {string} json file path
+ */
+const transformData = async (options, records) => {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve, reject) => {
+    const loggingOptions = {
+      label: 'transformData',
+    };
+
+    const opts = options;
+    const filename = `${opts.output.filename || 'result'}_transformed.csv`;
+
+    const outputFile = Path.join(opts.output.path, filename);
+
+    opts.logcount = opts.logcount || 500;
+
+    try {
+      const jsonataStream = jsonataTransformStream(options);
+      const csvStream = csvTransformStream(options); // Use object mode and outputs object
+      const outputStream = fs.createWriteStream(outputFile);
+
+      if (opts.includeBOM) {
+        outputStream.write(Buffer.from('\uFEFF'));
+      }
+
+      outputStream.on('error', (error) => {
+        opts.logger.error(`Path: ${stringifySafe(error)}`, loggingOptions);
+      });
+
+      jsonataStream.on('error', (error) => {
+        opts.logger.error(`Path: ${stringifySafe(error)}`, loggingOptions);
+      });
+
+      csvStream.on('error', (error) => {
+        opts.logger.error(`Path: ${stringifySafe(error)}`, loggingOptions);
+      });
+
+      csvStream.on('progress', (counter) => {
+        if (counter % opts.logcount === 0) {
+          opts.logger.info(`Processing. Processed: ${counter.toLocaleString()}`, {
+            label: `${loggingOptions.label}-csvStream`,
+          });
+        }
+      });
+
+      jsonataStream.on('progress', (counter) => {
+        if (counter % opts.logcount === 0) {
+          opts.logger.info(`Processing. Processed: ${counter.toLocaleString()}`, {
+            label: `${loggingOptions.label}-jsonataStream`,
+          });
+        }
+      });
+
+      outputStream.on('finish', () => {
+        if (records.length === 0) {
+          opts.logger.info('No records downloaded', loggingOptions);
+          fs.unlinkSync(outputFile);
+        } else {
+          opts.logger.info(`Records Saved. Path: ${outputFile}`, loggingOptions);
+        }
+        resolve({ outputFile });
+      });
+
+      jsonataStream.pipe(csvStream).pipe(outputStream);
+
+      if (records.length > 0) {
+        // Stream the results
+        // Iterate over the records and write EACH ONE to the stream individually.
+        // Each one of these records will become a JSON object in the output file.
+        records.forEach((record) => {
+          jsonataStream.write(record);
+        });
+        jsonataStream.end();
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
 /**
@@ -185,11 +278,11 @@ const getAllReportDataAndSave = async (options) => {
       label: 'getAllReportDataAndSave',
     };
 
-    const opts = options;
+    const filename = `${options.output.filename || 'result'}.${
+      options.reportrequest.body.formatType
+    }`;
 
-    const filename = opts.output.filename || 'result';
-
-    const outputFile = Path.join(opts.output.path, filename);
+    const outputFile = Path.join(options.output.path, filename);
 
     try {
       submitReport(options)
@@ -203,11 +296,23 @@ const getAllReportDataAndSave = async (options) => {
                   `Records Downloaded ${reportResponse.data.length.toLocaleString()}`,
                   loggingOptions
                 );
+
                 const outputStream = fs.createWriteStream(outputFile);
 
                 outputStream.on('finish', () => {
                   options.logger.info(`Records Saved. Path: ${outputFile}`, loggingOptions);
-                  resolve(outputFile);
+
+                  if (!_.isEmpty(delve(options, 'transform', null))) {
+                    transformData(options, reportResponse.data).then((transformedResponse) => {
+                      options.logger.info(
+                        `Transformed Records Saved. Path: ${transformedResponse.outputFile}`,
+                        loggingOptions
+                      );
+                      resolve(transformedResponse.outputFile);
+                    });
+                  } else {
+                    resolve(outputFile);
+                  }
                 });
 
                 outputStream.write(stringifySafe(reportResponse.data, null, 2));
@@ -236,14 +341,17 @@ const getAllReportDataAndSave = async (options) => {
               }
             })
             .catch((err) => {
-              options.logger.error(`Error:  ${err}`, loggingOptions);
+              options.logger.error(
+                `${err} Details: ${stringifySafe(delve(err, 'response.data', ''))}`,
+                loggingOptions
+              );
             });
         })
         .catch((err) => {
-          options.logger.error(`Error:  ${err}`, loggingOptions);
+          options.logger.error(err, loggingOptions);
         });
     } catch (err) {
-      options.logger.error('ERROR: trying to generate report results', loggingOptions);
+      options.logger.error('Trying to generate report results', loggingOptions);
       reject(err);
     }
   });

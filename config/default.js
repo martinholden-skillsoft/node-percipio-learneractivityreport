@@ -3,8 +3,20 @@ const defer = require('config/defer').deferConfig;
 
 const config = {};
 
-// Indicates a name for the configuration
-config.customer = 'default';
+// The trasnform file to use
+config.transform = null;
+
+// Boolean that indicates if ALL records should be retrieved
+// Default is false and last timestamp from lastrun.json
+// used as config.request.query.updatedSince value, this allows
+// script to be scheduled to run and used to get deltas.
+config.allRecords = false;
+
+// Boolean that indicates if the generated CSV should inlcude a UTF-8 Byte Order Marker (BOM)
+// Including the BOM makes it easier for the generated CSV to be opened in Microsoft Excel,
+// which otherwise will not display extended or double-byte characters correctly.
+config.includeBOM = true;
+
 config.startTimestamp = moment().utc().format('YYYYMMDD_HHmmss');
 // Null logger object
 config.logger = {};
@@ -24,7 +36,7 @@ config.output = {};
 config.output.path = 'results';
 // Filename
 config.output.filename = defer((cfg) => {
-  return `${cfg.startTimestamp}_results.json`;
+  return `${cfg.startTimestamp}_results`;
 });
 
 // Report Generation Request
@@ -58,7 +70,7 @@ config.reportrequest.body = {};
  * Format: date-time
  * Example: 2018-01-01T10:10:24Z
  */
-config.reportrequest.body.start = process.env.START || null;
+config.reportrequest.body.start = null;
 /**
  * Name: end
  * Description : End date for events retrieval
@@ -66,7 +78,7 @@ config.reportrequest.body.start = process.env.START || null;
  * Format: date-time
  * Example: 2018-01-10T10:20:24Z
  */
-config.reportrequest.body.end = process.env.END || null;
+config.reportrequest.body.end = null;
 /**
  * Name: timeFrame
  * Description : To calculate the start/end date dynamically based on timeframe and when the
@@ -75,9 +87,7 @@ config.reportrequest.body.end = process.env.END || null;
  * Type: string
  * Enum: DAY, WEEK, THIRTY_DAYS, CALENDAR_MONTH
  */
-config.reportrequest.body.timeFrame = config.reportrequest.body.start
-  ? null
-  : process.env.TIMEFRAME || 'THIRTY_DAYS';
+config.reportrequest.body.timeFrame = config.reportrequest.body.start ? null : 'THIRTY_DAYS';
 /**
  * Name: audience
  * Description : Audience filter, defaults to all audience

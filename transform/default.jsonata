@@ -1,0 +1,37 @@
+$.(
+    $comment := '*******************************************************';
+    $comment := '*******************************************************';
+    $comment := 'Simple Example that flattens the results, to deliver';
+    $comment := 'Only columns we want and with different names';
+    $comment := 'COURSEUNIQUEID =  contentUuid';
+    $comment := 'USERUNIQUEID =  userUuid';
+    $comment := 'SCORE =  highScore or -1 if no highscore';
+    $comment := 'STATUS = status';
+    $comment := 'Author: martinholden-skillsoft';
+    $comment := 'Date: 27-JAN-2021';
+    $comment := 'Dependency: Uses functions from https://www.npmjs.com/package/jsonata-extended';
+    $comment := '*******************************************************';
+    $comment := '*******************************************************';
+
+    $comment := 'The list of required columns in the output';
+    $required_columns := {
+        'COURSEUNIQUEID': '',
+        'USERUNIQUEID': '',
+        'SCORE': '',
+        'STATUS': ''
+    };
+
+    $transformed_data := (
+        $.{
+            'COURSEUNIQUEID': id,
+            'USERUNIQUEID': userUuid,
+            'SCORE': $exists(highScore) ? $number(highScore) : $number(-1),
+            'STATUS': status
+          }
+    );
+
+    $comment := '*******************************************************';
+    $comment := 'Merge the $required_columns object and the $transformed_data';
+
+    $merge([$required_columns, $transformed_data]);
+)
