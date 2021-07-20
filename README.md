@@ -9,6 +9,8 @@ To use this code you will need:
 1. A Skillsoft [Percipio](https://www.skillsoft.com/platform-solution/percipio/) Site
 1. A [Percipio Service Account](https://documentation.skillsoft.com/en_us/pes/3_services/service_accounts/pes_service_accounts.htm) with permission for accessing [REPORTING API](https://documentation.skillsoft.com/en_us/pes/2_understanding_percipio/rest_api/pes_rest_api.htm)
 
+The code can also be used to process a JSON file (as retrieved from the API) without the need to download the data, this is useful if you want to use different TRANSFORMS on the same data.
+
 # Configuration
 
 ## Creating a JSONata transform (Optional)
@@ -43,6 +45,7 @@ Once you have copied this repository set the following NODE ENV variables, or co
 | ORGID     | Required | This is the Percipio Organiation UUID for your Percipio Site                                                                                                                                                                                                                                     |
 | BEARER    | Required | This is the Percipio Bearer token for a Service Account with permissions for services.                                                                                                                                                                                                           |
 | BASEURL   | Required | This is set to the base URL for the Percipio data center. For US hosted use: https://api.percipio.com For EU hosted use: https://dew1-api.percipio.com                                                                                                                                           |
+| SOURCE    | Required for local file | This is the path to the previously downloaded JSON |
 | TRANSFORM | Optional | This is the path to the JSONata transform to use on JSON response, and then to save as CSV. The default is not to transform the resaponse. An example is [transform/default.jsonata](transform/default.jsonata)                                                                                  |
 | FORMAT    | Optional | This is the format for the report request. Valid options (case sensitive) are: JSON, CSV, TXT. The default if none specified or null is JSON                                                                                                                                                     |
 | TIMEFRAME | Optional | This is a filter criteria that specifies the timeframe for the results.<br/><br/>The report start/end dates are calculated dynamically based on when the report is submitted date.<br/><br/>Options are: DAY, WEEK, THIRTY_DAYS, CALENDAR_MONTH<br/><br/>If left empty/null THIRTY_DAYS is used. |
@@ -53,7 +56,7 @@ Once you have copied this repository set the following NODE ENV variables, or co
 
 Make any additional config changes in [config/default.js](config/default.js) file, to specify the request criteria for the report other then date range.
 
-## How to use it
+# Running the application
 
 Run the app
 
@@ -61,6 +64,7 @@ Run the app
 npm start
 ```
 
+## Downloading and transforming
 The Percipio [https://api.percipio.com/reporting/api-docs/#/%2Fv1/requestLearningActivityReport](https://api.percipio.com/reporting/api-docs/#/%2Fv1/requestLearningActivityReport) API wil be called to generate the report.
 
 The Percipio[https://api.percipio.com/reporting/api-docs/#/%2Fv1/getReportRequest](https://api.percipio.com/reporting/api-docs/#/%2Fv1/getReportRequest) API will then be called to download the generated data.
@@ -71,12 +75,22 @@ The returned report data will be stored in a file whose extension matches the FO
 results/YYYYMMDD_hhmmss_results.JSON
 ```
 
-If the respone is JSON and the TRANSFORM option has been specified the transformed results will be save in:
+If the response is JSON and the TRANSFORM option has been specified the transformed results will be save in:
 
 ```
 results/YYYYMMDD_hhmmss_results_transformed.csv
 ```
 
+## Local file loading and transforming
+The Percipio JSON data returned will be loaded from the specified local file and transformed using the transform specified, the [default.jsonata](transform/default.jsonata) shows some ideas for basic processing of the returned JSON from Percipio.
+
+The transformed JSON will then be saved in CSV format, with UTF-8 encoding to:
+
+```
+results/YYYYMMDD_hhmmss_results_transformed.csv
+```
+
+## Timestamp Format
 The timestamp component is based on the UTC time when the script runs:
 
 | DATEPART | COMMENTS                            |
@@ -88,10 +102,10 @@ The timestamp component is based on the UTC time when the script runs:
 | mm       | Minutes (i.e. 00 01 ... 58 59)      |
 | ss       | Seconds (i.e. 00 01 ... 58 59)      |
 
-## Changelog
+# Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
 
-## License
+# License
 
 MIT © martinholden-skillsoft

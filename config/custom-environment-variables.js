@@ -2,6 +2,9 @@
 // https://github.com/lorenwest/node-config/wiki/Environment-Variables#custom-environment-variables
 const config = {};
 
+// The local JSON file
+config.source = 'SOURCE';
+
 // The transform filename path.
 config.transform = 'TRANSFORM';
 

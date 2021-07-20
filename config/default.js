@@ -3,6 +3,9 @@ const defer = require('config/defer').deferConfig;
 
 const config = {};
 
+// The local JSON file
+config.source = null;
+
 // The trasnform file to use
 config.transform = null;
 
@@ -24,8 +27,6 @@ config.logger = {};
 // DEBUG Options - Enables the check for Fiddler, if running the traffic is routed thru Fiddler
 config.debug = {};
 // Debug logging
-// One of the supported default logging levels for winston - see https://github.com/winstonjs/winston#logging-levels
-config.debug.loggingLevel = 'info';
 config.debug.path = 'results';
 config.debug.filename = defer((cfg) => {
   return `${cfg.startTimestamp}_results.log`;
@@ -282,30 +283,21 @@ config.pollrequest.method = 'get';
 config.pollrequest.uritemplate =
   '/reporting/v1/organizations/{orgId}/report-requests/{reportRequestId}';
 
-// Global Web Retry Options for promise retry
-// see https://github.com/IndigoUnited/node-promise-retry#readme
-config.retry_options = {};
-config.retry_options.retries = 3;
-config.retry_options.minTimeout = 1000;
-config.retry_options.maxTimeout = 2000;
+// Global Axios Retry Settings
+// see https://github.com/JustinBeckwith/retry-axios
+config.rax = {};
+// Retry 3 times on requests that return a response (500, etc) before giving up.
+config.rax.retry = 20;
+// Retry twice on errors that don't return a response (ENOTFOUND, ETIMEDOUT, etc).
+config.rax.noResponseRetries = 2;
+// You can set the backoff type.
+// options are 'exponential' (default), 'static' or 'linear'
+config.rax.backoffType = 'exponential';
 
-/*
-Polling options for retrying report availability
-see https://github.com/IndigoUnited/node-promise-retry#readme
-options is a JS object that can contain any of the following keys:
-retries: The maximum amount of times to retry the operation.Default is 10.
-Seting this to 1 means do it once, then retry it once.
-factor: The exponential factor to use.Default is 2.
-minTimeout: The number of milliseconds before starting the first retry.Default is 1000.
-maxTimeout: The maximum number of milliseconds between two retries.Default is Infinity.
-randomize: Randomizes the timeouts by multiplying with a factor between 1 to 2. Default is false.
-*/
-
-config.polling_options = {};
-config.polling_options.retries = 20;
-config.polling_options.minTimeout = 60 * 1000;
-config.polling_options.maxTimeout = Infinity;
-// Using Factor=1 means polling at fixed interval of minTimeout
-config.polling_options.factor = 1;
+// Global Axios Rate Limiting#
+// see https://github.com/aishek/axios-rate-limit
+config.ratelimit = {};
+config.ratelimit.maxRequests = 1;
+config.ratelimit.perMilliseconds = 2000;
 
 module.exports = config;
